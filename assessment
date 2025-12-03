@@ -1,0 +1,436 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "76b86717",
+   "metadata": {},
+   "source": [
+    "# Section 1 - Dataset"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d6c44cf0",
+   "metadata": {},
+   "source": [
+    "The dataset used in this coursework is an emotion classification dataset consisting of text with emotional language paired with labels stating the emotion behind the words. Each entry contains a numerical label indicating which emotion the text represents. This dataset is commonly used for tasks such as text classification, emotion detection, and sentiment analysis.\n",
+    "\n",
+    "The task performed in this coursework is emotion classification. The goal is to predict the correct emotion label to match the emotion behind the given text. The dataset contains six emotion categories. \n",
+    "\n",
+    "1 – sadness\n",
+    "2 – joy\n",
+    "3 – love\n",
+    "4 – anger\n",
+    "5 – fear\n",
+    "6 – surprise\n",
+    "\n",
+    "The dataset contains a total of 16,000 samples. The distribution of each emotion varies. Some emotions appear more frequently than others. This is important to consider when training machine learning models, as class imbalance will influence performance.\n",
+    "\n",
+    "Emotion counts:\n",
+    "label_name\n",
+    "joy         5362\n",
+    "sadness     4666\n",
+    "anger       2159\n",
+    "fear        1937\n",
+    "love        1304\n",
+    "surprise     572\n",
+    "\n",
+    "The above table shows the number of times each emotion label appears in the dataset. This shows how the balance of the emotions and how some are more under represented."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "1ccb1c5f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import nltk\n",
+    "\n",
+    "from nltk.tokenize import word_tokenize\n",
+    "from nltk.corpus import stopwords\n",
+    "from nltk.stem.snowball import SnowballStemmer"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "686a0dcf",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                text  label label_name\n",
+      "0                            i didnt feel humiliated      0    sadness\n",
+      "1  i can go from feeling so hopeless to so damned...      0    sadness\n",
+      "2   im grabbing a minute to post i feel greedy wrong      3      anger\n",
+      "3  i am ever feeling nostalgic about the fireplac...      2       love\n",
+      "4                               i am feeling grouchy      3      anger\n",
+      "\n",
+      "Emotion counts:\n",
+      "label_name\n",
+      "joy         5362\n",
+      "sadness     4666\n",
+      "anger       2159\n",
+      "fear        1937\n",
+      "love        1304\n",
+      "surprise     572\n",
+      "Name: count, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "emotion_df = pd.read_parquet('C:/Users/decla/Downloads/emotion-train.parquet')\n",
+    "\n",
+    "\n",
+    "x = emotion_df['text'].astype(str).tolist()\n",
+    "y = emotion_df['label'].astype(int).to_numpy()\n",
+    "label_map = {\n",
+    "    0: \"sadness\",\n",
+    "    1: \"joy\",\n",
+    "    2: \"love\",\n",
+    "    3: \"anger\",\n",
+    "    4: \"fear\",\n",
+    "    5: \"surprise\"\n",
+    "}\n",
+    "\n",
+    "emotion_df['label_name'] = emotion_df['label'].map(label_map)\n",
+    "print(emotion_df.head())\n",
+    "\n",
+    "print(\"\\nEmotion counts:\")\n",
+    "print(emotion_df['label_name'].value_counts())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "c3b2b200",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[nltk_data] Downloading package punkt to\n",
+      "[nltk_data]     C:\\Users\\decla\\AppData\\Roaming\\nltk_data...\n",
+      "[nltk_data]   Package punkt is already up-to-date!\n",
+      "[nltk_data] Downloading package punkt_tab to\n",
+      "[nltk_data]     C:\\Users\\decla\\AppData\\Roaming\\nltk_data...\n",
+      "[nltk_data]   Package punkt_tab is already up-to-date!\n",
+      "[nltk_data] Downloading package stopwords to\n",
+      "[nltk_data]     C:\\Users\\decla\\AppData\\Roaming\\nltk_data...\n",
+      "[nltk_data]   Package stopwords is already up-to-date!\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "['didnt feel humili',\n",
+       " 'go feel hopeless damn hope around someon care awak',\n",
+       " 'im grab minut post feel greedi wrong',\n",
+       " 'ever feel nostalg fireplac know still properti',\n",
+       " 'feel grouchi']"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "nltk.download('punkt')\n",
+    "nltk.download('punkt_tab')\n",
+    "nltk.download('stopwords')\n",
+    "\n",
+    "def prep(text_list):\n",
+    "    processed = []\n",
+    "    stop_words = set(stopwords.words('english'))\n",
+    "    stemmer = SnowballStemmer(\"english\")\n",
+    "\n",
+    "    for sentence in text_list:\n",
+    "        tokens = word_tokenize(sentence)\n",
+    "        tokens = [t.lower() for t in tokens]\n",
+    "        tokens = [t for t in tokens if t not in stop_words]\n",
+    "        tokens = [stemmer.stem(t) for t in tokens]\n",
+    "        processed.append(\" \".join(tokens))\n",
+    "\n",
+    "    return processed\n",
+    "\n",
+    "prep_x = prep(x)\n",
+    "prep_x[:5] \n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fcd41a0a",
+   "metadata": {},
+   "source": [
+    "# Section 2 - Representation Learning"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0e7bd233",
+   "metadata": {},
+   "source": [
+    "The representation learning approach I chose is Word2Vec. Its a method for converting text into numerical vectors that my machine learning algorithms can process. Word2Vec learns word embeddings based on patterns. Two architectures are traditionally available—Continuous Bag-of-Words (CBOW), which predicts a word from its surrounding context, and Skip-Gram, which predicts surrounding words from a target word. \n",
+    "\n",
+    "To ensure fair evaluation, a new Word2Vec model is trained separately for each fold of the cross-validation process, using only the training data. This prevents knowledge from “leaking” into the test set. The model is trained with 300-dimensional embeddings, a context window of 5 words, and a minimum word frequency limit to avoid learning from rare or noisy tokens.\n",
+    "\n",
+    "These averaged embeddings serve as input to the classification algorithms (kNN and SVM). By leveraging Word2Vec’s ability to encode semantic similarity, the representation learning step provides a meaningful and compact numerical structure for downstream machine learning models.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "9df7fdd3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from gensim.models import Word2Vec\n",
+    "import numpy as np\n",
+    "\n",
+    "def word2vec_rep(sentence, w2v_model):\n",
+    "    embs = [w2v_model.wv[word] for word in sentence if word in w2v_model.wv.index_to_key]\n",
+    "    sent_emb = np.mean(np.array(embs), 0)\n",
+    "    return sent_emb\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "da747c2a",
+   "metadata": {},
+   "source": [
+    "# Section 3 - Algorithms"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8e65b873",
+   "metadata": {},
+   "source": [
+    "## k-Nearest Neighbour (kNN)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c0bbdb45",
+   "metadata": {},
+   "source": [
+    "k-Nearest Neighbour (kNN) is a classification algorithm that relies on the idea that data with similar features tend to share the same label. It is a non-parametric, instance-based learning algorithm, meaning it does not learn an internal model during training. Instead, it stores the training data and makes predictions based on how close it is to the other data points.\n",
+    "\n",
+    "For classification, kNN determines the label of a new data point by identifying its K nearest neighbours in the feature space using a distance measure such as Euclidean distance. The algorithm then assigns the most common class among these neighbours to the new instance. In this project, K=3 was chosen, offering a balance between noise sensitivity (low K) and oversmoothing (high K). This means a balance between a low k which will lead to it being too sensitive and not matching up pairs of data with the same emotion due to small differences, and not sensitive enough seeing all data as too similar and classifying it all in the same way\n",
+    "\n",
+    "Because kNN relies directly on numerical distances, its performance is highly dependent on the quality of the feature representation. This makes Word2Vec embeddings particularly suitable, as they capture similarities between documents in a dense vector space. By averaging the word embeddings of each document, kNN can effectively compare emotional tone across text samples.\n",
+    "\n",
+    "kNN is intuitive, easy to implement, and often performs well on moderately sized datasets. However, the larger the datasets is the worse the algorithm preforms since every prediction requires comparing the new instance to every training example. Despite this, kNN provides a strong baseline for evaluating the effectiveness of text representation methods like Word2Vec.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "18b7628c",
+   "metadata": {},
+   "source": [
+    "## Support Vector Machine (SVM)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8b3b4568",
+   "metadata": {},
+   "source": [
+    "Support Vector Machine (SVM) is a supervised learning algorithm widely used for classification tasks, particularly when dealing with high-dimensional data such as text. Unlike kNN, SVM learns an explicit decision boundary during training. The goal of the algorithm is to find the optimal hyperplane that separates classes with the maximum possible margin—the distance between the hyperplane and the nearest data points from each class, known as support vectors.\n",
+    "\n",
+    "SVM is especially effective for text classification because document vectors typically live in high-dimensional spaces, and SVM handles such scenarios very well. In this project, the linear SVM (LinearSVC) variant was used. A linear kernel is computationally efficient and often performs strongly when the data is linearly separable in the embedding space, as is often the case with Word2Vec document vectors.\n",
+    "\n",
+    "The training process involves solving an optimization problem that balances maximizing the margin with minimizing classification errors. This is controlled by the regularization parameter C, which determines how strictly misclassifications are penalized. A smaller C allows more classification errors but increases the margin, while a larger C reduces margin size in favour of higher accuracy on training data.\n",
+    "\n",
+    "SVM tends to outperform simpler algorithms such as kNN when the decision boundary is complex or when some emotion categories overlap in semantic space. Its robustness to high-dimensional input makes it an excellent choice for emotion classification, where subtle linguistic cues may differentiate one class from another.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "0a9ff1f4",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "kNN Accuracy: 0.32606250000000003\n",
+      "SVM Accuracy: 0.36900000000000005\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.neighbors import KNeighborsClassifier\n",
+    "from sklearn.svm import SVC\n",
+    "from sklearn.model_selection import StratifiedKFold\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "\n",
+    "knn_score = []\n",
+    "svm_score = []\n",
+    "\n",
+    "kf = StratifiedKFold(n_splits=5)\n",
+    "prepn_x = np.array(prep_x)\n",
+    "\n",
+    "for train, test in kf.split(prepn_x, y):\n",
+    "\n",
+    "    x_train, x_test, y_train, y_test = prepn_x[train], prepn_x[test], y[train], y[test]\n",
+    "\n",
+    "    w2v_model = Word2Vec(vector_size=300, window=5, min_count=3, workers=4)\n",
+    "    w2v_model.build_vocab(x_train)\n",
+    "    w2v_model.train(corpus_iterable=x_train, total_examples=len(x_train), epochs=10)\n",
+    "\n",
+    "    x_train_representations = [word2vec_rep(doc, w2v_model) for doc in x_train]\n",
+    "    x_test_representations = [word2vec_rep(doc, w2v_model) for doc in x_test]\n",
+    "\n",
+    "    knn = KNeighborsClassifier(n_neighbors=3)\n",
+    "    knn.fit(x_train_representations, y_train)\n",
+    "    knn_score.append(accuracy_score(y_test, knn.predict(x_test_representations)))\n",
+    "\n",
+    "    svm = SVC(kernel='linear')  \n",
+    "    svm.fit(x_train_representations, y_train)\n",
+    "    svm_score.append(accuracy_score(y_test, svm.predict(x_test_representations)))\n",
+    "\n",
+    "print(\"kNN Accuracy:\", np.mean(knn_score))\n",
+    "print(\"SVM Accuracy:\", np.mean(svm_score))\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "769829f7",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAiwAAAHDCAYAAAAHjUEjAAAAOXRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjkuMiwgaHR0cHM6Ly9tYXRwbG90bGliLm9yZy8hTgPZAAAACXBIWXMAAA9hAAAPYQGoP6dpAAA3jklEQVR4nO3de1xVdb7/8Tcb437zCookASZYJgMoYxfFCVOjccwxGcs0UqcZJ63Z1aR50sxTTDPlsVHTmpOXwEazrFPmaBNe0iOjMxBHK0Ar8ZaAVoKiYrHX7w9/7mYPkGxE9xd7PR+P9bD9Xd/13Z+10fabtb5rLS/LsiwBAAAYzObpAgAAAM6HwAIAAIxHYAEAAMYjsAAAAOMRWAAAgPEILAAAwHgEFgAAYDwCCwAAMB6BBQAAGI/AAlwkXl5eeuKJJzz2/tHR0brnnnua3Pe22267uAUZoqKiQiNHjlT79u3l5eWluXPnerokAE1AYAGa4YUXXpCXl5dSU1M9XUqTffLJJ3riiSdUVlbm6VLqSUtLk5eXl3Np166d+vTpo8WLF8vhcLToe/32t7/V+vXrNW3aNOXk5GjIkCEtOj6Ai6ONpwsAWqPly5crOjpaO3bs0Keffqq4uDhPl1RPaWmpbLbvfif55JNPNGvWLKWlpSk6OtpzhTWia9euys7OliQdOXJEr7zyisaPH6/du3fr97//fYu9z4YNG/Szn/1MDz/8cIuNCeDi4wgL4Ka9e/dq27ZtmjNnjjp27Kjly5d7uiQny7J06tQpSZKvr6+uuOIKD1fUdKGhoRozZozGjBmj3/72t/rf//1fde3aVfPnz9c333xzQWN/++23OnPmjCSpsrJSYWFhLVDxWadPn27xo0AA6iOwAG5avny52rZtq4yMDI0cOdKtwLJp0yalpKTIz89PsbGxevHFF/XEE0/Iy8vLpd+3336r2bNnKzY2Vr6+voqOjtZjjz2m2tpal37n5p6sX79eKSkp8vf314svvuhcd24Oy9KlS3XHHXdIkgYOHOg89bJp0yaX8bZu3aq+ffvKz89PMTExeuWVV1zWL126VF5eXtq6daumTJmijh07KiwsTPfdd5/OnDmjY8eOaezYsWrbtq3atm2r3/3ud2ruA+EDAgL04x//WDU1NTpy5Igk6dixY3rwwQcVFRUlX19fxcXF6ZlnnnEJDGVlZfLy8tKzzz6ruXPnOj/Dc6fxLMvSggULnJ/BOZ9//rnuuOMOtWvXzvne7777rktNmzZtkpeXl1asWKH/+I//UGRkpAICAlRdXa177rlHQUFB2r9/v2677TYFBQUpMjJSCxYskCTt2rVLP/nJTxQYGKhu3brp1VdfdRn7q6++0sMPP6xevXopKChIISEhGjp0qP7v//6vwRpee+01PfXUU+ratav8/Px0880369NPP633OW7fvl233nqr2rZtq8DAQF133XV6/vnnXfqUlJRo5MiRateunfz8/JSSkqK33367GT814OLhlBDgpuXLl2vEiBHy8fHR6NGjtXDhQv3jH/9Qnz59vne7Dz/8UEOGDFHnzp01a9Ys1dXV6cknn1THjh3r9Z0wYYKWLVumkSNH6qGHHtL27duVnZ2t4uJivfnmmy59S0tLNXr0aN13332aOHGievToUW+8/v37a8qUKfrTn/6kxx57TAkJCZLk/FOSPv30U40cOVLjx4/XuHHjtHjxYt1zzz1KTk7WNddc4zLe5MmTFRERoVmzZunvf/+7XnrpJYWFhWnbtm268sor9fTTT2vt2rX64x//qGuvvVZjx45t8uf7rz7//HN5e3srLCxMJ0+e1IABA3To0CHdd999uvLKK7Vt2zZNmzZNhw8frjd5dsmSJTp9+rR++ctfytfXV0lJScrJydHdd9+tQYMGudRUUVGh66+/XidPntSUKVPUvn17LVu2TMOGDdPrr7+u22+/3WXs2bNny8fHRw8//LBqa2vl4+MjSaqrq9PQoUPVv39//eEPf9Dy5ct1//33KzAwUNOnT9ddd92lESNGaNGiRRo7dqz69eunq666yrmvb731lu644w5dddVVqqio0IsvvqgBAwbok08+UZcuXVxq+P3vfy+bzaaHH35YVVVV+sMf/qC77rpL27dvd/b529/+pttuu02dO3fWAw88oIiICBUXF2vNmjV64IEHJEkff/yxbrjhBkVGRmrq1KkKDAzUa6+9puHDh+uNN96ot++Ax1gAmuyf//ynJcn629/+ZlmWZTkcDqtr167WAw88UK+vJGvmzJnO1z/96U+tgIAA69ChQ862PXv2WG3atLH+9Z9iUVGRJcmaMGGCy3gPP/ywJcnasGGDs61bt26WJGvdunX13r9bt27WuHHjnK9XrVplSbI2btzYYF9J1gcffOBs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",
+      "text/plain": [
+       "<Figure size 640x480 with 1 Axes>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "model_comp = [knn_score, svm_score]\n",
+    "\n",
+    "fig, ax2 = plt.subplots()\n",
+    "ax2.set_title('Algorithm Performance')\n",
+    "ax2.boxplot(model_comp)\n",
+    "ax2.set_xticklabels(['kNN', 'SVM'], rotation='vertical')\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "efaaee0b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "SVM correct emotion percentages:\n",
+      "sadness: 36.55% correct\n",
+      "joy: 80.71% correct\n",
+      "love: 0.00% correct\n",
+      "anger: 0.00% correct\n",
+      "fear: 0.00% correct\n",
+      "surprise: 0.00% correct\n",
+      "\n",
+      "KNN correct emotion percentages:\n",
+      "sadness: 54.23% correct\n",
+      "joy: 44.45% correct\n",
+      "love: 5.38% correct\n",
+      "anger: 9.03% correct\n",
+      "fear: 5.17% correct\n",
+      "surprise: 6.96% correct\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.metrics import confusion_matrix\n",
+    "\n",
+    "y_pred = svm.predict(x_test_representations)\n",
+    "\n",
+    "cm = confusion_matrix(y_test, y_pred)\n",
+    "\n",
+    "per_class_accuracy = cm.diagonal() / cm.sum(axis=1)\n",
+    "\n",
+    "print(\"SVM correct emotion percentages:\")\n",
+    "\n",
+    "for label, accuracy in enumerate(per_class_accuracy):\n",
+    "    print(f\"{label_map[label]}: {accuracy * 100:.2f}% correct\")\n",
+    "\n",
+    "y_pred = knn.predict(x_test_representations)\n",
+    "\n",
+    "cm = confusion_matrix(y_test, y_pred)\n",
+    "\n",
+    "per_class_accuracy = cm.diagonal() / cm.sum(axis=1)\n",
+    "\n",
+    "print(\"\")\n",
+    "print(\"KNN correct emotion percentages:\")\n",
+    "\n",
+    "for label, accuracy in enumerate(per_class_accuracy):\n",
+    "    print(f\"{label_map[label]}: {accuracy * 100:.2f}% correct\")\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8a74ae9a",
+   "metadata": {},
+   "source": [
+    "# Section 4 - Evaluation"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "49a5dc38",
+   "metadata": {},
+   "source": [
+    "The models were evaluated using 5-fold Stratified Cross-Validation to ensure each fold preserved the original class distribution. Accuracy was recorded for both kNN and SVM classifiers, and per-class performance was analysed using confusion matrices to understand how well each emotion was recognised.\n",
+    "\n",
+    "Overall accuracy showed that SVM performed strongly on average but struggled with classes that had less entries. The per-emotion accuracy highlights this imbalance: SVM correctly classified joy 80.71% of the time, while sadness reached 36.55%. However, love, anger, fear, and surprise all received 0% accuracy, indicating that the SVM was unable to distinguish these minority classes and instead over-predicted dominant categories. This behaviour is typical when using linear models with imbalanced datasets and dense averaged word embeddings, which tend to blur class boundaries.\n",
+    "\n",
+    "In contrast, kNN showed more balanced—although lower—performance across classes. Sadness achieved 54.23% accuracy, joy 44.45%, and the remaining emotions scored between 5–9%. These results suggest that kNN, being a similarity-based method, can capture some structure for smaller classes, but still suffers heavily from overlapping feature spaces.\n",
+    "\n",
+    "Overall, both models reveal that the dataset’s class imbalance and similarity between emotions limit classification performance. Improving the dataset balance or using more sophisticated embeddings could significantly enhance results.\n",
+    "\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.9"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
